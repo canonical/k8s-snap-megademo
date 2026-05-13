@@ -59,23 +59,15 @@ spec:
             - -c
             - |
               ollama serve &
-              OLLAMA_PID=$!
+              sleep 5
 
               for model in {{ range $i, $m := .Values.localInference.ollama.models }}{{ if $i }} {{ end }}{{ $m | quote }}{{ end }}; do
                 echo "[init] Pulling model: $model"
-                until curl -s http://localhost:11434/api/tags > /dev/null 2>&1; do
-                  echo "[init] Waiting for Ollama to start..."
-                  sleep 2
-                done
-                if ! curl -s http://localhost:11434/api/tags | grep -q "name\":\"$model"; then
-                  ollama pull "$model" || echo "[init] Warning: failed to pull $model"
-                else
-                  echo "[init] Model $model already cached"
-                fi
+                ollama pull "$model" || echo "[init] Warning: failed to pull $model"
               done
 
               echo "[init] Done pulling models"
-              kill $OLLAMA_PID 2>/dev/null || true
+              kill %1 2>/dev/null || true 2>/dev/null || true
           {{- if .Values.localInference.ollama.persistence.enabled }}
           volumeMounts:
             - name: ollama-data
