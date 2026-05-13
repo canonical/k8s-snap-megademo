@@ -88,7 +88,7 @@ def cmd_update_k8sd_api(args: argparse.Namespace) -> int:
                 "1",
                 "--branch",
                 k8sd_version,
-                "https://github.com/canonical/k8sd.git",
+                "https://github.com/canonical/k8sd-megademo.git",
                 str(k8sd_repo),
             ],
             capture_output=True,
