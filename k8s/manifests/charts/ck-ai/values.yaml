@@ -1,0 +1,45 @@
+provider:
+  model: ""
+  token: ""
+
+gateway:
+  enabled: true
+  image:
+    repository: ghcr.io/berriai/litellm
+    tag: main-stable
+    pullPolicy: IfNotPresent
+  port: 4000
+  replicas: 1
+  config:
+    general_settings: {}
+    model_list: []
+    litellm_settings:
+      drop_params: true
+  resources: {}
+  securityContext: {}
+  extraEnvVars: []
+
+localInference:
+  enabled: false
+  ollama:
+    image:
+      repository: ollama/ollama
+      tag: latest
+      pullPolicy: IfNotPresent
+    port: 11434
+    models:
+      - llama3.2:3b
+    resources: {}
+    securityContext: {}
+    persistence:
+      enabled: true
+      size: 10Gi
+
+service:
+  type: ClusterIP
+  port: 4000
+
+podSecurityContext: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -1,0 +1,15 @@
+provider:
+  model: openai/gpt-4o
+  token: sk-your-openai-key
+
+gateway:
+  enabled: true
+  config:
+    model_list: []
+
+localInference:
+  enabled: false
+
+service:
+  type: ClusterIP
+  port: 4000
