@@ -203,6 +203,7 @@ parts:
       - net-tools
       - openssl
       - procps
+      - squashfs-tools
       - tar
       - util-linux
     stage:
