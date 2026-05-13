@@ -1,0 +1,49 @@
+{{- $providerModel := .Values.provider.model }}
+{{- $hasProvider := and .Values.provider.model (not .Values.gateway.config.model_list) }}
+{{- $hasModelList := and .Values.gateway.config.model_list (ne (len .Values.gateway.config.model_list) 0) }}
+{{- $hasOllama := and .Values.localInference.enabled (ne (len .Values.localInference.ollama.models) 0) }}
+{{- $hasAny := or $hasProvider $hasModelList $hasOllama }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ck-ai.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ck-ai.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    general_settings:
+      {{- toYaml .Values.gateway.config.general_settings | nindent 6 }}
+
+    model_list:
+{{- if not $hasAny }}
+      []
+{{- else }}
+{{- if $hasProvider }}
+{{- $parts := splitList "/" $providerModel }}
+{{- if gt (len $parts) 1 }}
+      - model_name: {{ join "/" (rest $parts) }}
+        litellm_params:
+          model: {{ $providerModel }}
+          api_key: os.environ/PROVIDER_TOKEN
+{{- else }}
+      - model_name: {{ $providerModel }}
+        litellm_params:
+          model: {{ $providerModel }}
+          api_key: os.environ/PROVIDER_TOKEN
+{{- end }}
+{{- else if $hasModelList }}
+      {{- toYaml .Values.gateway.config.model_list | nindent 6 }}
+{{- end }}
+{{- if $hasOllama }}
+{{- range .Values.localInference.ollama.models }}
+      - model_name: {{ . }}
+        litellm_params:
+          model: ollama_chat/{{ . }}
+          api_base: http://localhost:11434
+{{- end }}
+{{- end }}
+{{- end }}
+
+    litellm_settings:
+      {{- toYaml .Values.gateway.config.litellm_settings | nindent 6 }}

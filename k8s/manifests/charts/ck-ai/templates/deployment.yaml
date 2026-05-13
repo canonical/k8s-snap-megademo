@@ -1,0 +1,171 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ck-ai.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ck-ai.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.gateway.replicas }}
+  selector:
+    matchLabels:
+      {{- include "ck-ai.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ck-ai.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: litellm-config
+          configMap:
+            name: {{ include "ck-ai.fullname" . }}-config
+        {{- if .Values.provider.token }}
+        - name: provider-secret
+          secret:
+            secretName: {{ include "ck-ai.fullname" . }}-secret
+        {{- end }}
+        {{- if and .Values.localInference.enabled .Values.localInference.ollama.persistence.enabled }}
+        - name: ollama-data
+          persistentVolumeClaim:
+            claimName: {{ include "ck-ai.fullname" . }}-ollama-data
+        {{- end }}
+      {{- if and .Values.localInference.enabled .Values.localInference.ollama.models }}
+      initContainers:
+        - name: ollama-model-pull
+          image: "{{ .Values.localInference.ollama.image.repository }}:{{ .Values.localInference.ollama.image.tag }}"
+          imagePullPolicy: {{ .Values.localInference.ollama.image.pullPolicy }}
+          env:
+            - name: OLLAMA_MODELS
+              value: /data/.ollama/models
+          command:
+            - /bin/sh
+            - -c
+            - |
+              ollama serve &
+              sleep 5
+
+              for model in {{ range $i, $m := .Values.localInference.ollama.models }}{{ if $i }} {{ end }}{{ $m | quote }}{{ end }}; do
+                echo "[init] Pulling model: $model"
+                ollama pull "$model" || echo "[init] Warning: failed to pull $model"
+              done
+
+              echo "[init] Done pulling models"
+              kill %1 2>/dev/null || true 2>/dev/null || true
+          {{- if .Values.localInference.ollama.persistence.enabled }}
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /data/.ollama
+          {{- end }}
+      {{- end }}
+      containers:
+        - name: litellm
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          args:
+            - "--config"
+            - "/etc/litellm/config.yaml"
+          ports:
+            - name: gateway
+              containerPort: {{ .Values.gateway.port }}
+              protocol: TCP
+          env:
+            {{- if .Values.provider.token }}
+            - name: PROVIDER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ck-ai.fullname" . }}-secret
+                  key: PROVIDER_TOKEN
+            {{- end }}
+            {{- with .Values.gateway.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: litellm-config
+              mountPath: /etc/litellm/config.yaml
+              subPath: config.yaml
+          {{- with .Values.gateway.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: gateway
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: gateway
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          {{- with .Values.gateway.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+        {{- if .Values.localInference.enabled }}
+        - name: ollama
+          image: "{{ .Values.localInference.ollama.image.repository }}:{{ .Values.localInference.ollama.image.tag }}"
+          imagePullPolicy: {{ .Values.localInference.ollama.image.pullPolicy }}
+          ports:
+            - name: ollama
+              containerPort: {{ .Values.localInference.ollama.port }}
+              protocol: TCP
+          env:
+            - name: OLLAMA_MODELS
+              value: /data/.ollama/models
+            - name: OLLAMA_KEEP_ALIVE
+              value: "5m"
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:{{ .Values.localInference.ollama.port }}"
+          {{- with .Values.localInference.ollama.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.localInference.ollama.persistence.enabled }}
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /data/.ollama
+          {{- end }}
+          {{- with .Values.localInference.ollama.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+
+{{- if and .Values.localInference.enabled .Values.localInference.ollama.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ck-ai.fullname" . }}-ollama-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ck-ai.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.localInference.ollama.persistence.size }}
+{{- end }}
+
+{{- end }}

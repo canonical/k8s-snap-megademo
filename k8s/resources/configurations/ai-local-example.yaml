@@ -1,0 +1,21 @@
+provider:
+  model: openai/gpt-4o
+  token: sk-your-openai-key
+
+gateway:
+  enabled: true
+  config:
+    model_list: []
+
+localInference:
+  enabled: true
+  ollama:
+    models:
+      - llama3.2:3b
+    persistence:
+      enabled: true
+      size: 20Gi
+
+service:
+  type: ClusterIP
+  port: 4000
