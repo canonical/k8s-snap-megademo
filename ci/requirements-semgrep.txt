@@ -838,14 +838,14 @@ semgrep==1.156.0 \
     --hash=sha256:a9a683f94f99629d345ac73a215859fc5ce6c58fe67ad2f78671de3874a260e3 \
     --hash=sha256:b68d14aced6c6f389fc7524e314b5638aa11ba50f35d3d3d97488e0930a21beb \
     --hash=sha256:ff57b35def987ec3f21748051fdb89ae57574984bf8108b03d79473da49e93f0
-    # via -r ci/requirements-semgrep.in
+    # via -r requirements-semgrep.in
 sse-starlette==3.3.4 \
     --hash=sha256:84bb06e58939a8b38d8341f1bc9792f06c2b53f48c608dd207582b664fc8f3c1 \
     --hash=sha256:aaf92fc067af8a5427192895ac028e947b484ac01edbc3caf00e7e7137c7bef1
     # via mcp
-starlette==1.0.0 \
-    --hash=sha256:6a4beaf1f81bb472fd19ea9b918b50dc3a77a6f2e190a12954b25e6ed5eea149 \
-    --hash=sha256:d3ec55e0bb321692d275455ddfd3df75fff145d009685eb40dc91fc66b03d38b
+starlette==1.0.1 \
+    --hash=sha256:512399c5f1de7fac99c88572212ded9ddeddef2fb32afa82d724000e88b38f4f \
+    --hash=sha256:7c0e69b2ee1c848bd54669d908500117a3ee13de603a21427e5c6fc1adf98dcd
     # via
     #   mcp
     #   sse-starlette
